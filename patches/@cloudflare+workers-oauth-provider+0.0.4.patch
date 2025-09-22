@@ -1,0 +1,23 @@
+diff --git a/node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js b/node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
+index 4f08af8..aed72c5 100644
+--- a/node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
++++ b/node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
+@@ -823,12 +823,12 @@ var OAuthProviderImpl = class {
+         "WWW-Authenticate": 'Bearer realm="OAuth", error="invalid_token"'
+       });
+     }
+-    const now = Math.floor(Date.now() / 1e3);
+-    if (tokenData.expiresAt < now) {
+-      return this.createErrorResponse("invalid_token", "Access token expired", 401, {
+-        "WWW-Authenticate": 'Bearer realm="OAuth", error="invalid_token"'
+-      });
+-    }
++    // const now = Math.floor(Date.now() / 1e3);
++    // if (tokenData.expiresAt < now) {
++    //   return this.createErrorResponse("invalid_token", "Access token expired", 401, {
++    //     "WWW-Authenticate": 'Bearer realm="OAuth", error="invalid_token"'
++    //   });
++    // }
+     const encryptionKey = await unwrapKeyWithToken(accessToken, tokenData.wrappedEncryptionKey);
+     const decryptedProps = await decryptProps(encryptionKey, tokenData.grant.encryptedProps);
+     ctx.props = decryptedProps;

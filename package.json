@@ -1,0 +1,34 @@
+{
+  "name": "ymax-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "cf-typegen": "wrangler types",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "postinstall": "patch-package",
+    "start": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250922.0",
+    "@types/node": "^24.5.2",
+    "marked": "^16.3.0",
+    "patch-package": "^8.0.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "workers-mcp": "^0.0.13",
+    "wrangler": "^4.38.0"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.0.10",
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "agents": "^0.1.4",
+    "hono": "^4.9.8",
+    "tslib": "^2.8.1",
+    "zod": "^3.24.3"
+  },
+  "packageManager": "yarn@4.10.2"
+}
