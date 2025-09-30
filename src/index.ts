@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
 import app from './app';
 import { registerVstorage } from './tools/vstorage';
+import { registerYmax } from './tools/ymax';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -19,6 +20,7 @@ export class MyMCP extends McpAgent {
 
   async init() {
     registerVstorage(this.server);
+    registerYmax(this.server);
   }
 }
 
@@ -67,9 +69,7 @@ class CustomProvider extends OAuthProvider {
 const handler = new CustomProvider({
   accessTokenTTL: ttl,
   apiHandlers: {
-    // @ts-expect-error XXX getSetCookie
     '/sse': MyMCP.serveSSE('/sse'),
-    // @ts-expect-error XXX getSetCookie
     '/mcp': MyMCP.serve('/mcp'),
   },
   apiRoute: '/sse',
