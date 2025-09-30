@@ -12,13 +12,14 @@ export const registerYmax = (mcp: McpServer) => {
     {
       portfolioId: z
         .string()
-        .describe('Optional portfolio ID to get portfolio for a specific user'),
+        .describe('Portfolio ID to get portfolio for a specific user'),
+      duration: z.string().optional().describe('Optional time period duration parameter'),
     },
-    async ({ portfolioId }) => {
+    async ({ portfolioId, duration = "all" }) => {
 
       try {
         const response = await makeGetRequest(
-          `${YDS_API}/portfolios/${portfolioId}/history`,
+          `${YDS_API}/portfolios/${portfolioId}/history?frequency=${duration}`,
         );
         return ResponseFormatter.success(response);
       } catch (error) {
@@ -36,7 +37,7 @@ export const registerYmax = (mcp: McpServer) => {
       portfolioId: z
         .string()
         .describe(
-          'Optional portfolio ID to get portfolio summary for a specific user',
+          'Portfolio ID to get portfolio summary for a specific user',
         ),
     },
     async ({ portfolioId }) => {
