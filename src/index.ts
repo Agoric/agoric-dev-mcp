@@ -4,6 +4,8 @@ import { McpAgent } from 'agents/mcp';
 import app from './app';
 import { registerVstorage } from './tools/vstorage';
 import { registerYmax } from './tools/ymax';
+import { registerMintscan } from './tools/mintscan';
+import { registerAxelar } from './tools/axelar';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -21,6 +23,8 @@ export class MyMCP extends McpAgent {
   async init() {
     registerVstorage(this.server);
     registerYmax(this.server);
+    registerMintscan(this.server);
+    registerAxelar(this.server);
   }
 }
 
