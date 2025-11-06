@@ -1,4 +1,4 @@
-name: Format Check
+name: Lint
 
 on:
   push:
@@ -9,12 +9,15 @@ permissions:
   contents: read
 
 jobs:
-  format-check:
-    name: Format Check
+  lint-check:
+    name: Lint Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -23,7 +26,10 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install
 
+      - name: Type Check
+        run: yarn type-check
+      
       - name: Check formatting
         run: yarn format:check
