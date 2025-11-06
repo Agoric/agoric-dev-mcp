@@ -6,6 +6,69 @@ import { env } from 'cloudflare:workers';
 
 const ETHERSCAN_API = 'https://api.etherscan.io/v2/api';
 
+interface EtherscanProxyResponse<T> {
+  jsonrpc: string;
+  id: number;
+  result?: T;
+  data?: { result?: T };
+}
+
+interface TransactionResult {
+  blockHash: string;
+  blockNumber: string;
+  from: string;
+  gas: string;
+  gasPrice: string;
+  hash: string;
+  input: string;
+  nonce: string;
+  to: string | null;
+  transactionIndex: string;
+  value: string;
+  v: string;
+  r: string;
+  s: string;
+}
+
+interface TransactionReceiptResult {
+  transactionHash: string;
+  transactionIndex: string;
+  blockHash: string;
+  blockNumber: string;
+  from: string;
+  to: string | null;
+  cumulativeGasUsed: string;
+  effectiveGasPrice: string;
+  gasUsed: string;
+  contractAddress: string | null;
+  logs: Array<any>;
+  logsBloom: string;
+  type: string;
+  status: string;
+}
+
+interface BlockResult {
+  number: string;
+  hash: string;
+  parentHash: string;
+  nonce: string;
+  sha3Uncles: string;
+  logsBloom: string;
+  transactionsRoot: string;
+  stateRoot: string;
+  receiptsRoot: string;
+  miner: string;
+  difficulty: string;
+  totalDifficulty: string;
+  extraData: string;
+  size: string;
+  gasLimit: string;
+  gasUsed: string;
+  timestamp: string;
+  transactions: Array<any>;
+  uncles: Array<string>;
+}
+
 export const registerEtherscan = (mcp: McpServer) => {
   const getApiKey = () => {
     const { ETHERSCAN_API_KEY } = env as unknown as {
@@ -170,7 +233,7 @@ export const registerEtherscan = (mcp: McpServer) => {
             action: 'eth_getTransactionByHash',
             txhash,
           });
-          const txResp = await makeGetRequest(txUrl);
+          const txResp = await makeGetRequest(txUrl) as EtherscanProxyResponse<TransactionResult>;
           const tx = txResp?.result || txResp?.data?.result || null;
           if (tx && tx.hash) {
             found = tx;
@@ -184,7 +247,7 @@ export const registerEtherscan = (mcp: McpServer) => {
                 action: 'eth_getTransactionReceipt',
                 txhash,
               });
-              const rResp = await makeGetRequest(rUrl);
+              const rResp = await makeGetRequest(rUrl) as EtherscanProxyResponse<TransactionReceiptResult>;
               foundReceipt = rResp?.result || rResp?.data?.result || null;
             } catch {}
 
@@ -199,7 +262,7 @@ export const registerEtherscan = (mcp: McpServer) => {
                   tag: blockNumber,
                   boolean: 'false',
                 });
-                const bResp = await makeGetRequest(bUrl);
+                const bResp = await makeGetRequest(bUrl) as EtherscanProxyResponse<BlockResult>;
                 const block = bResp?.result || bResp?.data?.result || null;
                 if (block && typeof block === 'object') {
                   foundBlock = block;
