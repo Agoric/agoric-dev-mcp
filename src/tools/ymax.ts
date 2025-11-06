@@ -13,10 +13,12 @@ export const registerYmax = (mcp: McpServer) => {
       portfolioId: z
         .string()
         .describe('Portfolio ID to get portfolio for a specific user'),
-      duration: z.enum(['4h', '1d', '1w', '1m', '3m', 'all']).optional().describe('Optional time period duration parameter'),
+      duration: z
+        .enum(['4h', '1d', '1w', '1m', '3m', 'all'])
+        .optional()
+        .describe('Optional time period duration parameter'),
     },
-    async ({ portfolioId, duration = "all" }) => {
-
+    async ({ portfolioId, duration = 'all' }) => {
       try {
         const response = await makeGetRequest(
           `${YDS_API}/portfolios/${portfolioId}/history?frequency=${duration}`,
@@ -36,12 +38,9 @@ export const registerYmax = (mcp: McpServer) => {
     {
       portfolioId: z
         .string()
-        .describe(
-          'Portfolio ID to get portfolio summary for a specific user',
-        ),
+        .describe('Portfolio ID to get portfolio summary for a specific user'),
     },
     async ({ portfolioId }) => {
-
       try {
         const response = await makeGetRequest(
           `${YDS_API}/portfolios/${portfolioId}`,
@@ -170,9 +169,7 @@ export const registerYmax = (mcp: McpServer) => {
       portfolioId: z
         .string()
         .describe('Portfolio ID to get flow information for'),
-      flowId: z
-        .string()
-        .describe('Flow ID to get specific flow details'),
+      flowId: z.string().describe('Flow ID to get specific flow details'),
     },
     async ({ portfolioId, flowId }) => {
       try {
