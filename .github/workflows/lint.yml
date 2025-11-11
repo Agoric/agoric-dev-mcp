@@ -30,6 +30,6 @@ jobs:
 
       - name: Type Check
         run: yarn type-check
-      
+
       - name: Check formatting
         run: yarn format:check

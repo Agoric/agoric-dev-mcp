@@ -7,6 +7,7 @@ import { registerYmax } from './tools/ymax';
 import { registerMintscan } from './tools/mintscan';
 import { registerAxelar } from './tools/axelar';
 import { registerEtherscan } from './tools/etherscan';
+import { registerCrossChainTracing } from './tools/cross-chain-tracing';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -27,6 +28,7 @@ export class MyMCP extends McpAgent {
     registerMintscan(this.server);
     registerAxelar(this.server);
     registerEtherscan(this.server);
+    registerCrossChainTracing(this.server);
   }
 }
 
