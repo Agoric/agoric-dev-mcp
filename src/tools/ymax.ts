@@ -83,7 +83,33 @@ export const registerYmax = (mcp: McpServer) => {
         const response = await makeGetRequest(
           `${YDS_API}/instruments/${instrumentId}`,
         );
-        return ResponseFormatter.success(response);
+
+        if (!response) {
+          return ResponseFormatter.error(
+            'Failed to fetch instrument data from API',
+          );
+        }
+
+        const responseData = response as any;
+
+        if (!responseData?.data?.instrument) {
+          return ResponseFormatter.error(
+            'Unexpectded response structure. Missing instrument data.',
+          );
+        }
+
+        const { historical, ...instrumentWithoutHistory } =
+          responseData.data.instrument;
+
+        const filtered = {
+          message: responseData.message,
+          timestamp: responseData.timestamp,
+          data: {
+            instrument: instrumentWithoutHistory,
+          },
+        };
+
+        return ResponseFormatter.success(filtered);
       } catch (error) {
         return ResponseFormatter.error(
           `Error fetching Ymax instrument: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -91,7 +117,6 @@ export const registerYmax = (mcp: McpServer) => {
       }
     },
   );
-
   mcp.tool(
     'ymax-get-optimization-candidates',
     'Fetch optimization candidates for a portfolio from the Ymax data service. It can have two modes: options and switches. switches is constrained to just ending one position and starting or expanding another. options can do multiple asset transfers',
