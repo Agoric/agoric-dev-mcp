@@ -7,6 +7,51 @@ import { ResponseFormatter } from '../utils/response-formatter';
 const MINTSCAN_API = 'https://apis.mintscan.io/v1';
 type ToolSchema = Record<string, z.ZodTypeAny>;
 
+const sanitizeLogs = (logs: any[]): any[] => {
+  if (!Array.isArray(logs)) return logs;
+
+  return logs.map((log) => ({
+    msg_index: log.msg_index ?? null,
+    events:
+      log.events?.map((ev: any) => ({
+        type: ev.type,
+        attributes:
+          ev.attributes?.map((a: any) => ({
+            key: a.key,
+            value: a.value,
+          })) || [],
+      })) || [],
+  }));
+};
+
+const sanitizeTransaction = (tx: any): any => {
+  if (!tx || typeof tx !== 'object') return tx;
+  const body = tx.tx?.body || {};
+
+  return {
+    txhash: tx.txhash,
+    height: tx.height,
+    code: tx.code,
+    timestamp: tx.timestamp,
+    gas_used: tx.gas_used,
+    gas_wanted: tx.gas_wanted,
+    chain_id: tx.chain_id,
+    data: tx.data,
+
+    memo: body.memo || '',
+    logs: sanitizeLogs(tx.logs || []),
+
+    // Fields intentionally omitted:
+    // - tx.codespace (empty)
+    // - tx.info (empty)
+    // - tx.tx.auth_info (keys, signatures)
+    // - tx.tx.signatures
+    // - tx.tx.body.extension_options
+    // - tx.tx.body.non_critical_extension_options
+    // - tx.tx./cosmos-tx-v1beta1-Tx redundant wrapper
+  };
+};
+
 export const registerMintscan = (mcp: McpServer) => {
   const getAuthHeaders = (): Record<string, string> => {
     const { MINTSCAN_ACCESS_TOKEN } = env as unknown as {
@@ -69,7 +114,15 @@ export const registerMintscan = (mcp: McpServer) => {
           3,
           getAuthHeaders(),
         );
-        return ResponseFormatter.success(response);
+        console.log(Object.keys(response as any));
+        const tx = response as unknown[];
+
+        const sanitized =
+          tx.length > 0
+            ? sanitizeTransaction(tx[0])
+            : { message: 'No transaction data found' };
+
+        return ResponseFormatter.success({ data: sanitized });
       } catch (error) {
         return ResponseFormatter.error(
           `Error fetching Mintscan tx details: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -162,7 +215,11 @@ export const registerMintscan = (mcp: McpServer) => {
         };
         const transactions = extractTransactions(root);
 
-        return ResponseFormatter.success({ data: { transactions } });
+        const sanitized = transactions.map(sanitizeTransaction);
+
+        return ResponseFormatter.success({
+          data: { transactions: sanitized },
+        });
       } catch (error) {
         return ResponseFormatter.error(
           `Error fetching Mintscan address transactions: ${error instanceof Error ? error.message : 'Unknown error'}`,

@@ -157,7 +157,36 @@ export const registerEtherscan = (mcp: McpServer) => {
           sort,
         });
         const response = await makeGetRequest(url);
-        return ResponseFormatter.success(response);
+        const result = (response as any)?.result || [];
+
+        // Omitting: blockHash, transactionIndex, cumulativeGasUsed,
+        // input (marked as "deprecated"), methodId, confirmations
+        const sanitized = Array.isArray(result)
+          ? result.map((tx: any) => ({
+              chainId: chainid,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber,
+              timeStamp: tx.timeStamp,
+              nonce: tx.nonce,
+              from: tx.from,
+              to: tx.to,
+              value: tx.value,
+              tokenName: tx.tokenName,
+              tokenSymbol: tx.tokenSymbol,
+              tokenDecimal: tx.tokenDecimal,
+              contractAddress: tx.contractAddress,
+              gas: tx.gas,
+              gasUsed: tx.gasUsed,
+              gasPrice: tx.gasPrice,
+              functionName: tx.functionName,
+            }))
+          : [];
+
+        return ResponseFormatter.success({
+          status: (response as any)?.status,
+          message: (response as any)?.message,
+          result: result,
+        });
       } catch (error) {
         return ResponseFormatter.error(
           `Error fetching Etherscan token transfers: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -231,7 +260,36 @@ export const registerEtherscan = (mcp: McpServer) => {
           sort,
         });
         const response = await makeGetRequest(url);
-        return ResponseFormatter.success(response);
+        const result = (response as any)?.result || [];
+
+        // Omitting: blockHash, transactionIndex, cumulativeGasUsed,
+        // methodId, confirmations
+        const sanitized = Array.isArray(result)
+          ? result.map((tx: any) => ({
+              chainId: chainid,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber,
+              timeStamp: tx.timeStamp,
+              nonce: tx.nonce,
+              from: tx.from,
+              to: tx.to,
+              value: tx.value,
+              gas: tx.gas,
+              gasUsed: tx.gasUsed,
+              gasPrice: tx.gasPrice,
+              isError: tx.isError,
+              txreceipt_status: tx.txreceipt_status,
+              contractAddress: tx.contractAddress,
+              functionName: tx.functionName,
+              input: tx.input,
+            }))
+          : [];
+
+        return ResponseFormatter.success({
+          status: (response as any)?.status,
+          message: (response as any)?.message,
+          result: sanitized,
+        });
       } catch (error) {
         return ResponseFormatter.error(
           `Error fetching Etherscan normal txs: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -341,11 +399,72 @@ export const registerEtherscan = (mcp: McpServer) => {
           }
         } catch {}
 
+        // Omitting from tx: v, r, s, yParity (signature), accessList, input
+        // maxFeePerGas, maxPriorityFeePerGas (keeping gasPrice)
+        const sanitizedTx = {
+          hash: found.hash,
+          blockNumber: found.blockNumber,
+          blockHash: found.blockHash,
+          from: found.from,
+          to: found.to,
+          value: found.value,
+          gas: found.gas,
+          gasPrice: found.gasPrice,
+          nonce: found.nonce,
+          transactionIndex: found.transactionIndex,
+          type: found.type,
+        };
+
+        // Omitting from receipt: logsBloom (256 bytes), gasUsedForL1, l1BlockNumber,
+        // timeboosted (Arbitrum-specific fields)
+        const sanitizedReceipt = foundReceipt
+          ? {
+              transactionHash: foundReceipt.transactionHash,
+              blockNumber: foundReceipt.blockNumber,
+              blockHash: foundReceipt.blockHash,
+              from: foundReceipt.from,
+              to: foundReceipt.to,
+              gasUsed: foundReceipt.gasUsed,
+              effectiveGasPrice: foundReceipt.effectiveGasPrice,
+              cumulativeGasUsed: foundReceipt.cumulativeGasUsed,
+              contractAddress: foundReceipt.contractAddress,
+              status: foundReceipt.status,
+              type: foundReceipt.type,
+              logs: foundReceipt.logs || [],
+            }
+          : null;
+
+        // Omitting from block: logsBloom (256 bytes), extraData, mixHash, nonce, sha3Uncles,
+        // receiptsRoot, stateRoot, transactionsRoot, uncles, transactions array,
+        // sendCount, sendRoot, l1BlockNumber (Arbitrum), size, difficulty, parentHash
+        const sanitizedBlock = foundBlock
+          ? {
+              number: foundBlock.number,
+              hash: foundBlock.hash,
+              timestamp: foundBlock.timestamp,
+              miner: foundBlock.miner,
+              gasUsed: foundBlock.gasUsed,
+              gasLimit: foundBlock.gasLimit,
+              baseFeePerGas: (foundBlock as any).baseFeePerGas,
+            }
+          : null;
+
+        const rawData = {
+          tx: found,
+          receipt: foundReceipt,
+          block: foundBlock,
+        };
+        const sanitizedData = {
+          tx: sanitizedTx,
+          receipt: sanitizedReceipt,
+          block: sanitizedBlock,
+        };
+
         return ResponseFormatter.success({
           data: {
-            tx: found,
-            receipt: foundReceipt,
-            block: foundBlock || null,
+            tx: sanitizedData.tx,
+            receipt: sanitizedData.receipt,
+            block: sanitizedData.block,
             blockTimestamp,
             blockTimestampIso,
             chainid: foundChainId,
