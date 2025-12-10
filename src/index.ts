@@ -3,7 +3,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
 import app from './app';
 import { registerAgoricTools } from './tools/agoric';
-import { registerHelloWorld } from './tools/hello-world';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -19,7 +18,6 @@ export class MyMCP extends McpAgent {
   }
 
   async init() {
-    registerHelloWorld(this.server);
     registerAgoricTools(this.server);
   }
 }
