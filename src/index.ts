@@ -2,12 +2,8 @@ import OAuthProvider from '@cloudflare/workers-oauth-provider';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
 import app from './app';
-import { registerVstorage } from './tools/vstorage';
-import { registerYmax } from './tools/ymax';
-import { registerMintscan } from './tools/mintscan';
-import { registerAxelar } from './tools/axelar';
-import { registerEtherscan } from './tools/etherscan';
-import { registerCrossChainTracing } from './tools/cross-chain-tracing';
+import { registerAgoricTools } from './tools/agoric';
+import { registerHelloWorld } from './tools/hello-world';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -23,12 +19,8 @@ export class MyMCP extends McpAgent {
   }
 
   async init() {
-    registerVstorage(this.server);
-    registerYmax(this.server);
-    registerMintscan(this.server);
-    registerAxelar(this.server);
-    registerEtherscan(this.server);
-    registerCrossChainTracing(this.server);
+    registerHelloWorld(this.server);
+    registerAgoricTools(this.server);
   }
 }
 
