@@ -160,10 +160,10 @@ export const registerProjectSetupTools = (server: McpServer) => {
       sdkVersion: z
         .string()
         .optional()
-        .describe('Agoric SDK version (defaults to latest stable)'),
+        .describe('Agoric SDK version (defaults to latest stable u22.2)'),
       includeOrchestration: z
         .boolean()
-        .default(false)
+        .default(true)
         .describe('Include orchestration-related dependencies'),
       includeTestDeps: z
         .boolean()
@@ -171,12 +171,75 @@ export const registerProjectSetupTools = (server: McpServer) => {
         .describe('Include test dependencies (AVA, etc.)'),
     },
     async ({ sdkVersion, includeOrchestration, includeTestDeps }) => {
-      // TODO: Implement dependency retrieval
+      const version = sdkVersion || 'u22.2';
+
+      // Core dependencies always needed
+      const dependencies: Record<string, string> = {
+        '@agoric/ertp': `^0.17.0-${version}`,
+        '@agoric/internal': `^0.4.0-${version}`,
+        '@agoric/store': `^0.10.0-${version}`,
+        '@agoric/vat-data': `^0.6.0-${version}`,
+        '@agoric/vow': `^0.2.0-${version}`,
+        '@agoric/zoe': `^0.27.0-${version}`,
+        '@endo/errors': '^1.2.13',
+        '@endo/far': '^1.1.14',
+        '@endo/init': '^1.1.12',
+        '@endo/marshal': '^1.8.0',
+        '@endo/patterns': '^1.7.0',
+      };
+
+      // Orchestration dependencies
+      if (includeOrchestration) {
+        dependencies['@agoric/orchestration'] = `^0.2.0-${version}`;
+        dependencies['@agoric/notifier'] = `^0.7.0-${version}`;
+      }
+
+      // Dev dependencies
+      const devDependencies: Record<string, string> = {};
+      if (includeTestDeps) {
+        devDependencies['@agoric/swingset-liveslots'] = `^0.11.0-${version}`;
+        devDependencies['@agoric/vats'] = `^0.16.0-${version}`;
+        devDependencies['@agoric/zone'] = `^0.3.0-${version}`;
+        devDependencies['@agoric/network'] = `^0.2.0-${version}`;
+        devDependencies['ava'] = '^5.3.0';
+        devDependencies['c8'] = '^10.1.3';
+        devDependencies['ts-blank-space'] = '^0.6.2';
+        devDependencies['bech32'] = '^2.0.0';
+      }
+
+      const scripts = {
+        build: 'exit 0',
+        test: 'ava',
+        'test:c8': 'c8 --all ${C8_OPTIONS:-} ava',
+        lint: "yarn run -T run-s --continue-on-error 'lint:*'",
+        'lint-fix': 'yarn lint:eslint --fix',
+        'lint:eslint': 'yarn run -T eslint .',
+        'lint:types': 'yarn run -T tsc',
+      };
+
+      const response = {
+        sdk_version: version,
+        dependencies,
+        devDependencies: includeTestDeps ? devDependencies : undefined,
+        scripts,
+        resolutions: {
+          'bech32': '^2.0.0',
+        },
+        engines: {
+          node: '^20.9 || ^22.11',
+        },
+        notes: [
+          'Dependencies are pinned to specific SDK version for compatibility',
+          'Use yarn resolutions to ensure consistent bech32 version',
+          'Node 20.9+ or 22.11+ is required for SES compatibility',
+        ],
+      };
+
       return {
         content: [
           {
             type: 'text',
-            text: 'Recommended dependencies for Agoric development',
+            text: JSON.stringify(response, null, 2),
           },
         ],
       };
@@ -197,12 +260,88 @@ export const registerProjectSetupTools = (server: McpServer) => {
         .describe('Level of detail in the response'),
     },
     async ({ includeTypescript, detailLevel }) => {
-      // TODO: Implement ESLint config generation
+      const eslintConfig = {
+        extends: ['@agoric'],
+        rules: {
+          // SES compatibility rules
+          'no-eval': 'error',
+          'no-new-func': 'error',
+          'no-restricted-globals': [
+            'error',
+            'eval',
+            'Function',
+            'setTimeout',
+            'setInterval',
+          ],
+
+          // Agoric best practices
+          'no-restricted-syntax': [
+            'error',
+            {
+              selector: "CallExpression[callee.property.name='push']",
+              message:
+                'Array.push() mutates arrays. Use spread: arr = [...arr, item]',
+            },
+          ],
+
+          // Import rules
+          'import/no-extraneous-dependencies': 'error',
+        },
+      };
+
+      const typescriptRules = includeTypescript
+        ? {
+            overrides: [
+              {
+                files: ['**/*.ts'],
+                extends: ['@agoric/eslint-config/typescript'],
+                rules: {
+                  '@typescript-eslint/no-floating-promises': 'error',
+                  '@typescript-eslint/explicit-function-return-type': 'off',
+                },
+              },
+            ],
+          }
+        : {};
+
+      const response: Record<string, unknown> =
+        detailLevel === 'quick'
+          ? {
+              extends: ['@agoric'],
+              file: '.eslintrc.cjs',
+              setup: 'Add @agoric/eslint-config to devDependencies',
+            }
+          : {
+              config: { ...eslintConfig, ...typescriptRules },
+              file: '.eslintrc.cjs',
+              format: 'module.exports = { ... }',
+              required_packages: [
+                '@agoric/eslint-config',
+                'eslint',
+                ...(includeTypescript
+                  ? ['@typescript-eslint/eslint-plugin', '@typescript-eslint/parser']
+                  : []),
+              ],
+              ses_restrictions: [
+                'No eval() or Function() constructor',
+                'No direct array mutation (push, pop, splice)',
+                'No global object modification',
+                'No __proto__ assignment',
+                'Date.now() and Math.random() return NaN in SES',
+              ],
+              best_practices: [
+                'Always harden objects before export',
+                'Use @endo/errors for error handling',
+                'Validate inputs with @endo/patterns',
+                'Replace array.push() with spread operator',
+              ],
+            };
+
       return {
         content: [
           {
             type: 'text',
-            text: 'ESLint configuration for Agoric development',
+            text: JSON.stringify(response, null, 2),
           },
         ],
       };
@@ -215,7 +354,7 @@ export const registerProjectSetupTools = (server: McpServer) => {
     {
       useTypescript: z
         .boolean()
-        .default(false)
+        .default(true)
         .describe('Configure for TypeScript tests'),
       detailLevel: z
         .enum(['quick', 'comprehensive'])
@@ -223,12 +362,91 @@ export const registerProjectSetupTools = (server: McpServer) => {
         .describe('Level of detail in the response'),
     },
     async ({ useTypescript, detailLevel }) => {
-      // TODO: Implement AVA config generation
+      // AVA config that goes in package.json under "ava" key
+      const avaConfig = {
+        extensions: {
+          js: true,
+          ...(useTypescript ? { ts: 'module' } : {}),
+        },
+        files: ['test/**/*.test.*'],
+        nodeArguments: [
+          ...(useTypescript ? ['--import=ts-blank-space/register'] : []),
+          '--no-warnings',
+        ],
+        require: ['@endo/init/debug.js'],
+        timeout: '5m',
+      };
+
+      const testBoilerplate = `// @ts-check
+import { test } from '@agoric/zoe/tools/prepare-test-env-ava.js';
+import { makeTracer } from '@agoric/internal';
+
+const trace = makeTracer('Test');
+
+test('basic test', async t => {
+  trace('Running test');
+  t.pass();
+});`;
+
+      const supportFileExample = `// test/supports.js
+import { makeDurableZone } from '@agoric/zone/durable.js';
+import { makeHeapZone } from '@agoric/zone';
+
+/**
+ * Provide a zone for unit tests
+ * Use HeapZone for simple tests, DurableZone for upgrade tests
+ */
+export const provideDurableZone = () => {
+  // For unit tests, HeapZone is simpler
+  return makeHeapZone();
+};`;
+
+      const response: Record<string, unknown> =
+        detailLevel === 'quick'
+          ? {
+              config_location: 'package.json under "ava" key',
+              ava: avaConfig,
+              critical: '@endo/init/debug.js MUST be in require array',
+            }
+          : {
+              config_location: 'package.json under "ava" key',
+              ava: avaConfig,
+              test_file_boilerplate: testBoilerplate,
+              support_file_example: supportFileExample,
+              critical_settings: {
+                '@endo/init/debug.js':
+                  'REQUIRED - Initializes SES lockdown before tests run',
+                timeout:
+                  'Set to 5m or higher for orchestration tests which can be slow',
+                'ts-blank-space':
+                  'Used for TypeScript - strips types without compilation',
+              },
+              test_commands: {
+                all: 'yarn test',
+                single: 'yarn ava test/my-test.test.js',
+                coverage: 'yarn test:c8',
+                watch: 'yarn ava --watch',
+              },
+              test_patterns: {
+                unit_test:
+                  'Test pure functions and utilities with makeHeapZone()',
+                integration_test:
+                  'Use @agoric/zoe/tools/setup-zoe.js for full Zoe tests',
+                exo_test: 'Use zone.exoClassKit with provideDurableZone()',
+              },
+              important_notes: [
+                'AVA config is in package.json, not a separate file',
+                'SES lockdown happens via @endo/init/debug.js require',
+                'Use ts-blank-space for TypeScript (faster than ts-node)',
+                'Test files must match pattern: test/**/*.test.*',
+              ],
+            };
+
       return {
         content: [
           {
             type: 'text',
-            text: 'AVA configuration for Agoric testing',
+            text: JSON.stringify(response, null, 2),
           },
         ],
       };

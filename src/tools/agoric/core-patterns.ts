@@ -231,36 +231,158 @@ export const registerCorePatternTools = (server: McpServer) => {
 
   server.tool(
     'agoric_pattern_example',
-    'Generate an Endo pattern for a given type shape description. Useful for creating validation patterns for complex data structures.',
+    'Get example Endo patterns for common use cases. Shows real patterns from the hello-world reference implementation.',
     {
-      typeDescription: z
-        .string()
-        .describe(
-          'Description of the type shape (e.g., "object with name string, age number, optional email")',
-        ),
-      typeName: z
-        .string()
-        .optional()
-        .describe('Name for the pattern constant'),
+      patternType: z
+        .enum(['record', 'interface', 'exoKit', 'all'])
+        .default('all')
+        .describe('Type of pattern example to show'),
       includeJsdoc: z
         .boolean()
         .default(true)
         .describe('Include JSDoc typedef'),
     },
-    async ({ typeDescription, typeName, includeJsdoc }) => {
-      // This is a placeholder that returns an example structure
-      // In a full implementation, this would use AI/parsing to generate patterns
-      const patternName = typeName || 'GeneratedShape';
+    async ({ patternType, includeJsdoc }) => {
+      const recordPatternExample = {
+        description: 'M.splitRecord for validating object shapes',
+        code: `import { M } from '@endo/patterns';
 
-      const response = {
-        pattern: `/** @type {TypedPattern<${patternName.replace('Shape', '')}>} */\nconst ${patternName} = M.splitRecord(\n  {\n    // Required fields based on: ${typeDescription}\n    // TODO: Fill in actual pattern based on type description\n  },\n  {\n    // Optional fields\n  }\n);\nharden(${patternName});`,
-        typedef: includeJsdoc
-          ? `/**\n * @typedef {{\n *   // TODO: Generate from ${typeDescription}\n * }} ${patternName.replace('Shape', '')}\n */`
-          : undefined,
-        imports_needed: ["import { M } from '@endo/patterns';"],
-        usage: `mustMatch(data, ${patternName});`,
-        note: 'This is a template. Parse typeDescription to generate actual pattern fields.',
+/**
+ * Shape for greeting configuration
+ */
+export const GreetingConfigShape = M.splitRecord({
+  prefix: M.string(),
+  suffix: M.string(),
+});
+
+/**
+ * Shape for a greeting result
+ */
+export const GreetingResultShape = M.splitRecord({
+  message: M.string(),
+  timestamp: M.bigint(),
+  count: M.nat(),
+});
+
+/**
+ * Shape for contract terms
+ */
+export const HelloWorldTermsShape = {
+  greeting: M.string(),
+};`,
+        usage: `import { mustMatch } from '@endo/patterns';
+
+// Validate data matches shape
+mustMatch(result, GreetingResultShape);`,
       };
+
+      const interfacePatternExample = {
+        description: 'M.interface for defining Exo method signatures',
+        code: `import { M } from '@endo/patterns';
+
+/**
+ * Interface for the public facet
+ */
+export const GreeterPublicI = M.interface('GreeterPublic', {
+  getGreeting: M.call().returns(M.string()),
+  getGreetingCount: M.call().returns(M.nat()),
+  makeGreetInvitation: M.call().returns(M.promise()),
+});
+
+/**
+ * Interface for the creator facet
+ */
+export const GreeterCreatorI = M.interface('GreeterCreator', {
+  updateGreeting: M.call(M.string()).returns(M.undefined()),
+  getStats: M.call().returns(M.record()),
+});`,
+        method_patterns: {
+          sync_no_args: 'M.call().returns(M.string())',
+          sync_with_args: 'M.call(M.string(), M.nat()).returns(M.boolean())',
+          async_method: 'M.callWhen(M.any()).returns(M.promise())',
+          returns_void: 'M.call().returns(M.undefined())',
+        },
+      };
+
+      const exoKitPatternExample = {
+        description: 'Interface guards for ExoClassKit with multiple facets',
+        code: `import { M } from '@endo/patterns';
+
+/**
+ * Interface for GreeterKit facets
+ */
+export const GreeterKitI = harden({
+  holder: M.interface('GreeterHolder', {
+    greet: M.call(M.string()).returns(GreetingResultShape),
+    getHistory: M.call().returns(M.arrayOf(M.string())),
+  }),
+  invitationMakers: M.interface('GreeterInvitationMakers', {
+    Greet: M.call(M.string()).returns(M.promise()),
+  }),
+  admin: M.interface('GreeterAdmin', {
+    disable: M.call().returns(M.undefined()),
+    isDisabled: M.call().returns(M.boolean()),
+  }),
+});`,
+        usage: `// Use in zone.exoClassKit
+const makeGreeterKit = zone.exoClassKit(
+  'GreeterKit',
+  GreeterKitI,
+  (greeterId, greeting) => harden({ greeterId, greeting, greetCount: 0n, history: [], disabled: false }),
+  {
+    holder: { /* methods */ },
+    invitationMakers: { /* methods */ },
+    admin: { /* methods */ },
+  }
+);`,
+      };
+
+      let response: Record<string, unknown>;
+
+      if (patternType === 'record') {
+        response = {
+          record_patterns: recordPatternExample,
+          imports_needed: ["import { M, mustMatch } from '@endo/patterns';"],
+        };
+      } else if (patternType === 'interface') {
+        response = {
+          interface_patterns: interfacePatternExample,
+          imports_needed: ["import { M } from '@endo/patterns';"],
+        };
+      } else if (patternType === 'exoKit') {
+        response = {
+          exoKit_patterns: exoKitPatternExample,
+          imports_needed: ["import { M } from '@endo/patterns';"],
+        };
+      } else {
+        response = {
+          record_patterns: recordPatternExample,
+          interface_patterns: interfacePatternExample,
+          exoKit_patterns: exoKitPatternExample,
+          imports_needed: ["import { M, mustMatch } from '@endo/patterns';"],
+          common_matchers: {
+            'M.string()': 'Any string',
+            'M.number()': 'Any number (including NaN, Infinity)',
+            'M.bigint()': 'Any BigInt',
+            'M.nat()': 'Non-negative BigInt (natural number)',
+            'M.boolean()': 'true or false',
+            'M.record()': 'Any plain object',
+            'M.array()': 'Any array',
+            'M.arrayOf(M.string())': 'Array of strings',
+            'M.promise()': 'A promise',
+            'M.any()': 'Matches anything (use sparingly)',
+            'M.undefined()': 'undefined value',
+            'M.remotable(name)': 'A Far object reference',
+          },
+          best_practices: [
+            'Define patterns as module-level constants in typeGuards.js',
+            'Always harden pattern definitions',
+            'Use M.splitRecord for objects with required/optional fields',
+            'Use M.interface for Exo method guards',
+            'Prefer specific matchers over M.any()',
+          ],
+        };
+      }
 
       return {
         content: [
