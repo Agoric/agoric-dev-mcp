@@ -17,6 +17,12 @@ The server provides tools across 10 categories:
 - **Security** - Security best practices and vulnerability checks
 - **Discovery & Help** - Documentation and API discovery
 
+## Quick Start (Claude Code)
+
+```bash
+claude mcp add --transport sse agoric-dev http://localhost:8787/sse
+```
+
 ## Develop locally
 
 ```bash
