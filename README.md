@@ -20,8 +20,10 @@ The server provides tools across 10 categories:
 ## Quick Start (Claude Code)
 
 ```bash
-claude mcp add --transport sse agoric-dev http://localhost:8787/sse
+claude mcp add --transport sse agoric-dev https://agoric-dev-mcp.agoric-core.workers.dev/sse
 ```
+
+For local development, use `http://localhost:8787/sse` instead.
 
 ## Develop locally
 
