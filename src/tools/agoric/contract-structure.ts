@@ -604,7 +604,7 @@ export const registerContractStructureTools = (server: McpServer) => {
 
   server.tool(
     'agoric_golden_contract',
-    'Get the golden reference implementation of a production-grade Agoric contract. Based on fast-usdc, this shows real patterns for orchestration, flows, zone management, and facet design. Use this as the primary reference when building new contracts.',
+    'Get the golden reference implementation of a production-grade Agoric contract. Based on fast-usdc, this shows real patterns for orchestration, flows, zone management, and facet design. Use this as the primary reference when building complex contracts after agoric_project_scaffold tool has already been used.',
     {
       component: z
         .enum(['contract', 'flows', 'both'])
