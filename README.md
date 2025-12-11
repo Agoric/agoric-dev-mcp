@@ -1,4 +1,21 @@
-# Agoric Remote MCP Server
+# Agoric Dev MCP Server
+
+An MCP (Model Context Protocol) server that provides AI assistants with tools for Agoric smart contract development. This server enables Claude and other MCP-compatible AI assistants to help developers build, test, debug, and deploy smart contracts on the Agoric blockchain.
+
+## Features
+
+The server provides tools across 10 categories:
+
+- **Project Setup** - Initialize and configure Agoric projects
+- **Core Patterns** - Agoric development patterns and best practices
+- **Contract Structure** - Smart contract scaffolding and structure
+- **Zoe & ERTP** - Zoe contract framework and ERTP asset handling
+- **Orchestration** - Cross-chain orchestration capabilities
+- **Durability** - Durable object patterns for upgrade-safe contracts
+- **Testing** - Contract testing utilities and patterns
+- **Debugging & Tracing** - Debug and trace contract execution
+- **Security** - Security best practices and vulnerability checks
+- **Discovery & Help** - Documentation and API discovery
 
 ## Develop locally
 
