@@ -1,5 +1,4 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { registerContractStructureTools } from './contract-structure';
 import { registerCorePatternTools } from './core-patterns';
 import { registerDebuggingTools } from './debugging';
 import { registerDiscoveryTools } from './discovery';
@@ -17,27 +16,24 @@ export const registerAgoricTools = (server: McpServer) => {
   // Category 2: Core Patterns
   registerCorePatternTools(server);
 
-  // Category 3: Contract Structure
-  registerContractStructureTools(server);
-
-  // Category 4: Zoe & ERTP
+  // Category 3: Zoe & ERTP
   registerZoeERTPTools(server);
 
-  // Category 5: Orchestration
+  // Category 4: Orchestration
   registerOrchestrationTools(server);
 
-  // Category 6: Durability
+  // Category 5: Durability
   registerDurabilityTools(server);
 
-  // Category 7: Testing
+  // Category 6: Testing
   registerTestingTools(server);
 
-  // Category 8: Debugging & Tracing
+  // Category 7: Debugging & Tracing
   registerDebuggingTools(server);
 
-  // Category 9: Security
+  // Category 8: Security
   registerSecurityTools(server);
 
-  // Category 10: Discovery & Help
+  // Category 9: Discovery & Help
   registerDiscoveryTools(server);
 };
