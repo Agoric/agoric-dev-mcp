@@ -82,19 +82,36 @@ test('MessageShape rejects invalid messages', t => {
 });`,
   },
   mock_patterns: {
-    description: 'Mocking for isolation',
-    example: `const mockAccount = Far('MockAccount', {
-  getAddress: () => ({ value: 'agoric1test...' }),
-  transfer: async () => 'success',
-  send: async () => 'sent'
+    description: 'Mocking for isolation using zone.exo',
+    example: `import { makeHeapZone } from '@agoric/zone';
+import { M } from '@endo/patterns';
+
+const zone = makeHeapZone();
+
+const MockAccountI = M.interface('MockAccount', {
+  getAddress: M.call().returns(M.record()),
+  transfer: M.callWhen(M.any(), M.any()).returns(M.string()),
+  send: M.callWhen(M.any(), M.any()).returns(M.string()),
 });
 
-const mockOrchestrator = Far('MockOrchestrator', {
-  getChain: async (name) => ({
-    makeAccount: async () => mockAccount,
-    getChainInfo: async () => ({ chainId: 'agoric-test' }),
-    getVBankAssetInfo: async () => []
-  })
+const mockAccount = zone.exo('MockAccount', MockAccountI, {
+  getAddress() { return { value: 'agoric1test...' }; },
+  async transfer() { return 'success'; },
+  async send() { return 'sent'; },
+});
+
+const MockOrchestratorI = M.interface('MockOrchestrator', {
+  getChain: M.callWhen(M.string()).returns(M.record()),
+});
+
+const mockOrchestrator = zone.exo('MockOrchestrator', MockOrchestratorI, {
+  async getChain(name) {
+    return {
+      makeAccount: async () => mockAccount,
+      getChainInfo: async () => ({ chainId: 'agoric-test' }),
+      getVBankAssetInfo: async () => [],
+    };
+  },
 });`,
   },
   contract_tests: {
@@ -116,50 +133,82 @@ test('contract starts correctly', async t => {
 
 const mockChainData = {
   mock_account: {
-    code: `import { Far } from '@endo/far';
+    code: `import { makeHeapZone } from '@agoric/zone';
+import { M } from '@endo/patterns';
 
-const makeMockAccount = (address = 'agoric1test123') => Far('MockAccount', {
-  getAddress: () => ({
-    value: address,
-    chainId: 'agoric-test',
-    encoding: 'bech32'
-  }),
-  transfer: async (destination, amount, opts) => {
-    // Track calls for assertions
-    return 'transfer-success';
-  },
-  send: async (toAccount, amount) => {
-    return 'send-success';
-  },
-  monitorTransfers: async (tap) => {
-    // Store tap for later simulation
-  },
-  deposit: async (payment) => {
-    return 'deposited';
-  }
-});`,
+const zone = makeHeapZone();
+
+const MockAccountI = M.interface('MockAccount', {
+  getAddress: M.call().returns(M.record()),
+  transfer: M.callWhen(M.any(), M.any(), M.opt(M.record())).returns(M.string()),
+  send: M.callWhen(M.any(), M.any()).returns(M.string()),
+  monitorTransfers: M.callWhen(M.any()).returns(M.undefined()),
+  deposit: M.callWhen(M.any()).returns(M.string()),
+});
+
+const prepareMockAccount = (zone) => {
+  return (address = 'agoric1test123') => zone.exo('MockAccount', MockAccountI, {
+    getAddress() {
+      return { value: address, chainId: 'agoric-test', encoding: 'bech32' };
+    },
+    async transfer(destination, amount, opts) {
+      // Track calls for assertions
+      return 'transfer-success';
+    },
+    async send(toAccount, amount) {
+      return 'send-success';
+    },
+    async monitorTransfers(tap) {
+      // Store tap for later simulation
+    },
+    async deposit(payment) {
+      return 'deposited';
+    },
+  });
+};
+
+const makeMockAccount = prepareMockAccount(zone);`,
   },
   mock_chain: {
-    code: `const makeMockChain = (chainName, chainId) => Far('MockChain', {
-  makeAccount: async () => makeMockAccount(),
-  getChainInfo: async () => ({
-    chainId,
-    stakingTokens: [{ denom: \`u\${chainName}\` }]
-  }),
-  getVBankAssetInfo: async () => [
-    { brand: mockBrands.BLD, denom: 'ubld' }
-  ]
-});`,
+    code: `const MockChainI = M.interface('MockChain', {
+  makeAccount: M.callWhen().returns(M.remotable('MockAccount')),
+  getChainInfo: M.callWhen().returns(M.record()),
+  getVBankAssetInfo: M.callWhen().returns(M.array()),
+});
+
+const prepareMockChain = (zone, makeMockAccount) => {
+  return (chainName, chainId) => zone.exo('MockChain', MockChainI, {
+    async makeAccount() {
+      return makeMockAccount();
+    },
+    async getChainInfo() {
+      return { chainId, stakingTokens: [{ denom: \`u\${chainName}\` }] };
+    },
+    async getVBankAssetInfo() {
+      return [{ brand: mockBrands.BLD, denom: 'ubld' }];
+    },
+  });
+};
+
+const makeMockChain = prepareMockChain(zone, makeMockAccount);`,
   },
   mock_orchestrator: {
-    code: `const makeMockOrchestrator = (chains = {}) => Far('MockOrchestrator', {
-  getChain: async (chainName) => {
-    if (chains[chainName]) {
-      return chains[chainName];
-    }
-    return makeMockChain(chainName, \`\${chainName}-test-1\`);
-  }
-});`,
+    code: `const MockOrchestratorI = M.interface('MockOrchestrator', {
+  getChain: M.callWhen(M.string()).returns(M.remotable('MockChain')),
+});
+
+const prepareMockOrchestrator = (zone, makeMockChain, chains = {}) => {
+  return zone.exo('MockOrchestrator', MockOrchestratorI, {
+    async getChain(chainName) {
+      if (chains[chainName]) {
+        return chains[chainName];
+      }
+      return makeMockChain(chainName, \`\${chainName}-test-1\`);
+    },
+  });
+};
+
+const mockOrchestrator = prepareMockOrchestrator(zone, makeMockChain);`,
   },
   usage: `test('flow creates account', async t => {
   const mockOrch = makeMockOrchestrator();
@@ -177,27 +226,48 @@ const makeMockAccount = (address = 'agoric1test123') => Far('MockAccount', {
 
 const testOffersData = {
   mock_seat: {
-    code: `const makeMockSeat = (proposal = { give: {}, want: {} }) => {
-  let exited = false;
-  let failed = false;
-  let failReason = null;
+    code: `import { makeHeapZone } from '@agoric/zone';
+import { M } from '@endo/patterns';
 
-  return Far('MockSeat', {
-    getProposal: () => proposal,
-    getCurrentAllocation: () => ({}),
-    hasExited: () => exited,
-    exit: () => { exited = true; },
-    fail: (reason) => {
-      failed = true;
-      failReason = reason;
-      exited = true;
-    },
-    // Test helpers
-    didExit: () => exited,
-    didFail: () => failed,
-    getFailReason: () => failReason
-  });
-};`,
+const zone = makeHeapZone();
+
+const MockSeatI = M.interface('MockSeat', {
+  getProposal: M.call().returns(M.record()),
+  getCurrentAllocation: M.call().returns(M.record()),
+  hasExited: M.call().returns(M.boolean()),
+  exit: M.call().returns(M.undefined()),
+  fail: M.call(M.any()).returns(M.undefined()),
+  // Test helpers
+  didExit: M.call().returns(M.boolean()),
+  didFail: M.call().returns(M.boolean()),
+  getFailReason: M.call().returns(M.opt(M.any())),
+});
+
+const prepareMockSeat = (zone) => {
+  return (proposal = { give: {}, want: {} }) => {
+    let exited = false;
+    let failed = false;
+    let failReason = null;
+
+    return zone.exo('MockSeat', MockSeatI, {
+      getProposal() { return proposal; },
+      getCurrentAllocation() { return {}; },
+      hasExited() { return exited; },
+      exit() { exited = true; },
+      fail(reason) {
+        failed = true;
+        failReason = reason;
+        exited = true;
+      },
+      // Test helpers
+      didExit() { return exited; },
+      didFail() { return failed; },
+      getFailReason() { return failReason; },
+    });
+  };
+};
+
+const makeMockSeat = prepareMockSeat(zone);`,
   },
   test_successful_offer: {
     code: `test('offer completes successfully', async t => {
